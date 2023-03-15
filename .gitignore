@@ -1,0 +1,11 @@
+settings.cfg
+main
+config.json
+storage
+*_server.crt
+*_server.key
+AxisBodyWornSwiftServiceExample*
+GNSSViewerExample*
+/media-storage-service
+/contentkey.private.pem
+/contentkey.public.pem

@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# Argument $1 is the videofile to play
+
+# Extract key value
+
+grep EncryptedKey $1.key | cut -d'"' -f 4 > wrapped_encryption.key.base64
+
+#Base 64 decode key
+
+base64 -d wrapped_encryption.key.base64 > wrapped_encryption.key
+
+#Unwrap key
+
+openssl rsautl -decrypt -oaep -inkey private_key.pem -in wrapped_encryption.key -out encryption.key
+
+#Convert key to hex
+
+xxd -p encryption.key | tr -d '\n' > encryption.key.hex
+
+#Extract IV value
+
+grep ContentEncryptionIV $1.key | cut -d'"' -f 4 > encryption.iv.base64
+
+#Base 64 decode IV
+
+base64 -d encryption.iv.base64 > encryption.iv
+
+#Convert IV to hex
+
+xxd -p encryption.iv | tr -d '\n' > encryption.iv.hex
+
+#Decrypt video
+
+openssl enc -d -aes-256-cbc -iv `cat encryption.iv.hex` -in $1 -out decrypted_videofile.mkv -K `cat encryption.key.hex`
+
+#Play video
+
+vlc decrypted_videofile.mkv
