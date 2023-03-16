@@ -457,7 +457,7 @@ If the content destination can retrieve and display GNSS track data from a recor
 
 ## License
 
-Copyright 2020-2022 Axis Communications AB
+Copyright 2020-2023 Axis Communications AB
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
