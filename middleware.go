@@ -102,8 +102,8 @@ func logRequestResponse(handler http.Handler) http.Handler {
 		}
 		handler.ServeHTTP(logWriter, r)
 
-		logger.Infof("%s %s %s : Status %d %s\n",
-			r.RemoteAddr, r.Method, r.URL.String(),
+		logger.Infof("%s %s %s%s : Status %d %s\n",
+			r.RemoteAddr, r.Method, r.Host, r.URL.String(),
 			logWriter.status, http.StatusText(logWriter.status),
 		)
 	})

@@ -74,14 +74,14 @@ The following table lists the used endpoints of the Swift API. All except for th
 
 | Code | Description |
 |---|---|
-| 400 Bad Request | Returned when the content destination can't store (and never will be able to store) the recording. It gets status Recording not transferred in AXIS Body Worn Manager, and becomes available for download. Can be used when: the timestamp is out of bounds the clip has no duration a user id or device id doesn't exist |
-| 401 Unauthorized | Should be returned by content destination integration when user credentials are invalid or auth token missing |
-| 402 Payment Required | Returned when attempting to create a BWC or user in content destination but there are no more licenses. |
+| 400 Bad Request | Returned when the content destination can't store (and never will be able to store) the recording. It gets status Recording not transferred in AXIS Body Worn Manager, and becomes available for download. Can be used when: the timestamp is out of bounds, the clip has no duration, a user id or device id doesn't exist |
+| 401 Unauthorized | Returned by the content destination when user credentials are invalid or auth token missing |
+| 402 Payment Required | Returned when attempting to create a BWC or user in the content destination but there are no more licenses. |
 | 403 Forbidden | Returned when user permissions are insufficient for a specific resource |
 | 404 Not Found | Returned when specific resource is not available |
 | 500&nbsp;Internal&nbsp;Server&nbsp;Error | Any other error |
 | 503 Service Unavailable | Returned when the content destination is busy and receives too many upload requests from the system controller, but wants the system controller to try again soon. |
-| 507 Insufficient Storage | Returned when content destination is out of disk space/disk quota. |
+| 507 Insufficient Storage | Returned when the content destination is out of disk space/disk quota. |
 
 ## Connection API, set up a connection to the content destination
 
@@ -130,10 +130,10 @@ Some attributes can be modified after the initial setup is completed and some ar
 | BlobAPIKey | X | |  |
 | BlobAPIUserName | X | |  |
 | ContainerType | | X | Default value is mkv (optional). |
-| FullStoreAndReadSupport | | X | Default value is false (optional). |
+| FullStoreAndReadSupport | X | X | Default value is false (optional). Only allowed to change from false to true |
 | WantEncryption | X | X | Default value is false. Only allowed to change from false to true |
-| PublicKey | X | X | Required if WantEncryption is set. |
-| PublicKeyId | X | X | Required if WantEncryption is set. |
+| PublicKey | X | X | Required if WantEncryption is set. No value allowed otherwise. |
+| PublicKeyId | X | X | Required if WantEncryption is set. No value allowed otherwise. |
 
 ## Capability API, content destination capabilities
 
@@ -416,11 +416,13 @@ Object name is `<BWCSerialNumber>`.
 
 ### Encrypt
 
-In the connection file, a key for end to end content encryption can be set with the `PublicKey` and `PublicKeyId` parameters. the `WantEncryption` parameter should also be set to ´true´.
+In the connection file, a key for end to end content encryption can be set with the `PublicKey` and `PublicKeyId` parameters. The `WantEncryption` parameter should also be set to ´true´.
 
 The corresponding private key is required to be able to decrypt the uploaded content. The `PublicKeyId` is written to the video key object which is stored together with the encrypted video clip. GNSS track objects are encrypted in the same manner. The CD can use the ID to know which key to use for decryption.
 
 If `WantEncryption` parameter is set and `PublicKey` is not set, the BWS will display an error. If `WantEncryption` parameter is not set, content encryption is disabled, and the `PublicKey` is ignored.
+
+If encryption has been enabled for a system it can not be turned off and a configuration for such a system is considered invalid and is rejected if it would render encryption disabled.
 
 ### Decrypt
 

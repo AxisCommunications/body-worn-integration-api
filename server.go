@@ -202,10 +202,11 @@ func (s *Server) handleGetMetadata(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getMetadataFilePath(carrier string) (string, bool, error) {
 	str := strings.Split(carrier, "/")
 	container := true
-	name := filepath.Join(str[0], str[0])
 	if len(str) > 2 {
-		return "", container, errors.New("Subdirectories aren't supported")
-	} else if len(str) > 1 {
+		return "", container, errors.New("subdirectories aren't supported")
+	}
+	name := filepath.Join(str[0], str[0])
+	if len(str) > 1 {
 		name = name + "." + str[1]
 		container = false
 	}
@@ -264,7 +265,8 @@ func (s *Server) handleCreation(w http.ResponseWriter, r *http.Request) {
 	if e := s.handlePutMetadata(w, r, target); e != nil {
 		http.Error(w, e.Text, e.StatusCode)
 		return
-	} else if created {
+	}
+	if created {
 		w.WriteHeader(http.StatusCreated)
 	} else {
 		w.WriteHeader(http.StatusAccepted)
@@ -276,37 +278,31 @@ func (s *Server) handlePutMetadata(w http.ResponseWriter, r *http.Request, carri
 	if err != nil {
 		logger.Error(err)
 		return swift.ContainerNotFound
-
 	}
 	newMeta := parseMetadata(r)
 	if container {
 		oldMeta, err := loadMetadata(metaPath)
-		switch err {
-		case nil:
-			updateMetadata(oldMeta, newMeta)
-			storeMetadata(metaPath, oldMeta)
-			return nil
-		default:
-			switch err.(type) {
-			case *os.PathError:
-				err2 := storeMetadata(metaPath, newMeta)
-				if err2 != nil {
-					logger.Error(err2)
-					return swift.ContainerNotFound
-				}
-				logger.Error(err)
-				return nil
-			default:
-				logger.Error(err)
-				err = backupMetadata(metaPath)
-				if err != nil {
-					logger.Error("Failed to backup old meta data")
-					logger.Error(err)
-				}
-				storeMetadata(metaPath, newMeta)
-				return nil
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			err2 := storeMetadata(metaPath, newMeta)
+			if err2 != nil {
+				logger.Error(err2)
+				return swift.ContainerNotFound
 			}
+			return nil
+		case err != nil:
+			logger.Error(err)
+			err = backupMetadata(metaPath)
+			if err != nil {
+				logger.Error("Failed to backup old meta data")
+				logger.Error(err)
+			}
+			storeMetadata(metaPath, newMeta)
+			return nil
 		}
+		updateMetadata(oldMeta, newMeta)
+		storeMetadata(metaPath, oldMeta)
+		return nil
 	} else {
 		if _, err := os.Stat(path.Dir(filepath.Join(s.settings.StorageLocation, carrier))); os.IsNotExist(err) {
 			logger.Error(err)
@@ -316,16 +312,15 @@ func (s *Server) handlePutMetadata(w http.ResponseWriter, r *http.Request, carri
 			logger.Error(err)
 			if e, ok := err.(*os.PathError); ok && e.Err == syscall.ENOSPC {
 				return newError(507, "Insufficient Storage")
-			} else {
-				return swift.ObjectCorrupted
 			}
-		} else {
-			return nil
+			return swift.ObjectCorrupted
+
 		}
+		return nil
 	}
-	return nil
 }
 
+// getTarget returns the relative filepath of the request's target file
 func getTarget(r *http.Request) string {
 	target := r.URL.Path[len(RootStorageEndpoint)+1:]
 
@@ -396,7 +391,7 @@ func (s *Server) handlePostMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//TODO maybe make sure that there can be multiple backupfiles
+// TODO maybe make sure that there can be multiple backupfiles
 func backupMetadata(metadatapath string) error {
 	fp, err := os.Create(metadatapath + ".bac")
 	if err != nil {
