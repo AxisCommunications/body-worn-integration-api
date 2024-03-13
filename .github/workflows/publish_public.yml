@@ -1,0 +1,40 @@
+# This workflow publishes "public" branch on internal repo to "main" branch on a public repo.
+# This workflow executes on every commit made to the public branch and pushes the commits to main.
+# This workflow file is therefore published as well.
+
+name: Push to Public
+
+on:
+  push:
+    branches:
+      - public
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Push to public
+        if: ${{ vars.PUBLISH_SSH_REPO != '' }}
+        env:
+          PUBLISH_SSH_PRIVATE_KEY: ${{ secrets.PUBLISH_SSH_PRIVATE_KEY }}
+          PUBLISH_SSH_REPO: ${{ vars.PUBLISH_SSH_REPO }}
+        run: |
+          # github actions checkout fetches only the specific commit, but we want
+          # the full history so that we can fast-forward the public remote.
+          git fetch --unshallow origin
+
+          # Set up access to push to the public repo
+          mkdir -p ~/.ssh
+          echo "$PUBLISH_SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          # Add the public remote repo and fetch it.
+          git remote add public "$PUBLISH_SSH_REPO"
+          git fetch public
+
+          # Push current commit (from origin/public) to public/main
+          git push public HEAD:main
+
