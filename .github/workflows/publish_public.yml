@@ -36,5 +36,5 @@ jobs:
           git fetch public
 
           # Push current commit (from origin/public) to public/main
-          git push public HEAD:main
+          git push --follow-tags public HEAD:main
 

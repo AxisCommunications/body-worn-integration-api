@@ -31,11 +31,11 @@ Each `Recording` from the BWS creates a corresponding `Container` and each `Clip
 
 A `Recording` consists of:
 
-- N video clip objects, `N > 0`
+- `N` video clip objects, `N > 0`
 - one keyfile object per video clip, if end to end encryption is enabled
 - a location object, if track support is enabled
 - one keyfile object per location object, if end to end encryption is enabled
-- M bookmark files, `M >= 0`, if bookmarks are enabled
+- `M` bookmark files, `M >= 0`, if bookmarks are enabled
 
 Each video clip in the `Recording` corresponds to an `Object` in the `Container`.
 
