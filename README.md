@@ -206,7 +206,8 @@ A recording carries the essential information to map it to a `UserID` and a `BWC
 
 ## File Upload API, file transfer from BWS to CD
 
-The File upload API is used when the Body worn system uploads a recording created in a BWC. Doing this creates a corresponding recording container, which gets a name according to this template: `<UserID>_<BWCSerialNumber>_<TriggerOnTime>`.
+The File upload API is used when the Body worn system uploads a recording created in a BWC. Doing this creates a corresponding recording container, which gets a name according to this template:
+`<UserID>_<BWCSerialNumber>_<TriggerOnTime>`, where TriggerOnTime is given in UTC time and formatted according to YYYYMMDDTHHMMSSZ.
 
 Every clip in the recording corresponds to an object in the container, where the clips are named `<StartTime>_<RecordingID>.<ContainerType>`. Please note that `RecordingID` is a short, random number for the recording that shouldn't be relied upon for identification purposes.
 
@@ -224,9 +225,11 @@ every device an object named with the `<deviceid>` is created.
 ### Recordings
 
 For every recording a new container is created. It's named as
-`<userid>_<deviceid>_date_time` where "userid" is the UUID of the user who was
-assigned to the camera when it was recording, and "deviceid" is the ID of the
-camera which did the recording.
+`<UserID>_<BWCSerialNumber>_<TriggerOnTime>` where "UserID" is the UUID of the user who was
+assigned to the camera when it was recording, "DeviceID" is the ID of the
+camera which did the recording and TriggerOnTime is the time when the recording was started.
+TriggerOnTime is given in UTC time and formatted according to YYYYMMDDTHHMMSSZ.
+
 
 In every recording container there's one or multiple clips.
 There could also be a GNSS track object and one or several bookmark objects.
@@ -243,7 +246,7 @@ Account
 │   └── <userid>
 ├── Devices
 │   └── <deviceid>
-└── recordingname:<userid>_<deviceid>_<date>_<time>
+└── recordingname:<userid>_<deviceid>_<datetime>
     ├── clipname: <date>_<time>_<id>.mkv
     ├── keyname: <date>_<time>_<id>.key
     ├── bookmarkname: bookmark_<timestamp>_<ID>
@@ -258,7 +261,7 @@ All metadata header keys have the prefix `X-Object-Meta` or `X-Container-Meta` a
 
 #### Recording container metadata
 
-The name of the container is `<UserID>_<BWCSerialNumber>_<TriggerOnTime>`.
+The name of the container is `<UserID>_<BWCSerialNumber>_<TriggerOnTime>` where TriggerOnTime is given in UTC time and formatted according to YYYYMMDDTHHMMSSZ.
 
 | Key | Type | Description |
 |---|---|---|
