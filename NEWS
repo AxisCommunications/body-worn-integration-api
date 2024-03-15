@@ -1,5 +1,9 @@
 Axis Body worn integration API
 
+Changes in v1.6.8:
+
+	* Update description of recording container name
+
 Changes in v1.6.7:
 
 	* Clarified text in README 
