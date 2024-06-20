@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"crypto/md5"
@@ -47,6 +47,7 @@ type Settings struct {
 	fullStoreAndReadSupport bool
 }
 
+// Config represents the contents of the connection file used to configure the SCU
 type Config struct {
 	ConnectionFileVersion string `json:"ConnectionFileVersion"`
 	SiteName              string `json:"SiteName"`
@@ -65,7 +66,7 @@ type Config struct {
 	//	VideoEncoding              string `json:"VideoEncoding"`
 	WantEncryption          bool   `json:"WantEncryption"`
 	PublicKey               string `json:"PublicKey"`
-	PublicKeyId             string `json:PublicKeyId`
+	PublicKeyId             string `json:"PublicKeyId"`
 	FullStoreAndReadSupport bool   `json:"FullStoreAndReadSupport"`
 	//	PublicKeyRenewBy           string `json:"PublicKeyRenewBy"`
 	//	WantRecordingLocationFiles bool   `json:"WantRecordingLocationFiles"`
@@ -78,12 +79,30 @@ type Config struct {
 }
 
 type Server struct {
-	scheme   string
-	settings *Settings
+	scheme       string
+	settings     *Settings
+	settingsPath string
 }
 
-func NewServer(settings *Settings) *Server {
-	return &Server{settings: settings}
+func New(settingsPath string) (*Server, error) {
+
+	conf := Settings{}
+
+	confFile, err := os.Open(filepath.Join(settingsPath, settingsFilename))
+	if err != nil {
+		return nil, err
+	}
+	defer confFile.Close()
+	confBytes, err := io.ReadAll(confFile)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(confBytes, &conf)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Server{settings: &conf, settingsPath: settingsPath}, nil
 }
 
 func newError(StatusCode int, Text string) *swift.Error {
@@ -110,7 +129,7 @@ func (s *Server) authentication(w http.ResponseWriter, r *http.Request) {
 	}
 	AccessToken, err := auth(username, password, s.settings.Username, s.settings.Password, s.settings.TokenSecret)
 	if err != nil {
-		logger.Error(err)
+		logger.Errorf("Authentication error: %v", err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -122,7 +141,7 @@ func (s *Server) authentication(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) storageHandler(w http.ResponseWriter, r *http.Request) {
 	if err := verifyToken(r.Header[TokenTag], s.settings.TokenSecret); err != nil {
-		logger.Error(err)
+		logger.Errorf("Token verification error: %v", err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -262,7 +281,7 @@ func (s *Server) handleCreation(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-	if e := s.handlePutMetadata(w, r, target); e != nil {
+	if e := s.handlePutMetadata(r, target); e != nil {
 		http.Error(w, e.Text, e.StatusCode)
 		return
 	}
@@ -273,7 +292,7 @@ func (s *Server) handleCreation(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) handlePutMetadata(w http.ResponseWriter, r *http.Request, carrier string) *swift.Error {
+func (s *Server) handlePutMetadata(r *http.Request, carrier string) *swift.Error {
 	metaPath, container, err := s.getMetadataFilePath(carrier)
 	if err != nil {
 		logger.Error(err)
@@ -479,12 +498,12 @@ func storeMetadata(name string, metadata map[string]string) error {
 func auth(inputUser, inputPwd, storedUser string, storedPass, tokenSecret []byte) (string, error) {
 
 	if inputUser != storedUser {
-		return "", errors.New("Access Denied, You don't have permission to access this server")
+		return "", errors.New("access denied, you don't have permission to access this server")
 	}
 
 	err := bcrypt.CompareHashAndPassword(storedPass, []byte(inputPwd))
 	if err != nil {
-		return "", errors.New("Access Denied, You don't have permission to access this server")
+		return "", errors.New("access denied, you don't have permission to access this server")
 	}
 
 	return createToken(tokenSecret)
@@ -513,19 +532,19 @@ func createToken(tokenSecret []byte) (string, error) {
 func verifyToken(tokenString []string, tokenSecret []byte) error {
 
 	if len(tokenString) == 0 {
-		return errors.New("Cannot verify empty token")
+		return errors.New("cannot verify empty token")
 	}
 
 	// Parse token
 	token, err := jwt.ParseWithClaims(tokenString[0], &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 
 		return tokenSecret, nil
 	})
 	if err != nil {
-		return errors.New("Failed to parse Token: " + err.Error())
+		return fmt.Errorf("failed to parse Token: %v", err)
 	}
 
 	// Validate token
@@ -534,14 +553,14 @@ func verifyToken(tokenString []string, tokenSecret []byte) error {
 	if _, ok := token.Claims.(*jwt.StandardClaims); ok && token.Valid {
 		return nil
 	}
-	return errors.New("Failed to validate Token")
+	return errors.New("failed to validate token")
 }
 
-func startHTTPSServer(ip, port string, index int, handler http.Handler) {
+func startHTTPSServer(settingsPath, ip, port string, index int, handler http.Handler) {
 	logger.Info("Server listens on " + ip + ":" + port + "...")
 	err := http.ListenAndServeTLS(ip+":"+port,
-		filepath.Join(exePath, buildCertName(index)),
-		filepath.Join(exePath, buildKeyName(index)),
+		filepath.Join(settingsPath, buildCertName(index)),
+		filepath.Join(settingsPath, buildKeyName(index)),
 		handler)
 
 	if err != nil {
@@ -559,9 +578,7 @@ func startHTTPServer(ip, port string, handler http.Handler) {
 
 }
 
-func (s *Server) Run() {
-	logger.Info("Starting Axis body worn Swift service example: " + version)
-	logger.Info("Built on " + buildTime)
+func (s *Server) Run(exit chan struct{}) {
 
 	http.HandleFunc(RootAuthEndpoint, s.authentication)
 	http.HandleFunc(RootStorageEndpoint+"/", s.storageHandler)
@@ -571,7 +588,7 @@ func (s *Server) Run() {
 	if s.settings.UseHttps {
 		s.scheme = "https://"
 		for i, ip := range s.settings.IPs {
-			go startHTTPSServer(ip, s.settings.Port, i, handler)
+			go startHTTPSServer(s.settingsPath, ip, s.settings.Port, i, handler)
 		}
 	} else {
 		s.scheme = "http://"
@@ -580,6 +597,5 @@ func (s *Server) Run() {
 			go startHTTPServer(ip, s.settings.Port, handler)
 		}
 	}
-	// Block the main thread indefinitely
-	select {}
+	<-exit
 }

@@ -15,7 +15,7 @@ in the `go.mod` file)
 One way is to run
 
 ```sh
-go build .
+go build ./cmd/media-storage-service
 ```
 
 The `Makefile` is setup to build binaries for Windows, Linux and Mac. To build
@@ -54,7 +54,7 @@ system.
 ### Run test
 
 ```sh
-go test
+go test ./...
 ```
 
 ## File encryption

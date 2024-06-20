@@ -1,12 +1,14 @@
 package main
 
-import "encoding/json"
-import "fmt"
-import "os"
-import "sort"
-import "strconv"
-import "strings"
-import "time"
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+)
 
 type CoordinateEntries struct {
 	CoordinateEntries []CoordinateEntry
@@ -60,7 +62,7 @@ func convertToGeoJson(inputPath string) (GeoJson, error) {
 	return GeoJson{
 		Type: "FeatureCollection",
 		Features: []Feature{
-			Feature{
+			{
 				Type:       "Feature",
 				Geometry:   geometry,
 				Properties: Property{"value0"},
@@ -72,12 +74,12 @@ func convertToGeoJson(inputPath string) (GeoJson, error) {
 func readGvlFile(path string) (*CoordinateEntries, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("error reading file %s: %v\n", path, err)
+		return nil, fmt.Errorf("error reading file %s: %v", path, err)
 	}
 	c := CoordinateEntries{}
 	err = json.Unmarshal(data, &c)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing json: %v\n", err)
+		return nil, fmt.Errorf("error parsing json: %v", err)
 	}
 	sort.Slice(c.CoordinateEntries, func(i, j int) bool {
 		return c.CoordinateEntries[i].SecondsFromStart < c.CoordinateEntries[j].SecondsFromStart

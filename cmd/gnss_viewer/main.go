@@ -1,13 +1,15 @@
 package main
 
-import "fmt"
-import "net"
-import "net/http"
-import "os"
-import "os/exec"
-import "runtime"
-import "html/template"
-import "embed"
+import (
+	"embed"
+	"fmt"
+	"html/template"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"runtime"
+)
 
 //go:embed index.html
 var content embed.FS
@@ -31,7 +33,7 @@ func main() {
 
 	geoJson, err := convertToGeoJson(os.Args[1])
 	if err != nil {
-		fmt.Println("Error converting file: ", err)
+		fmt.Printf("Error converting file: %v\n", err)
 		return
 	}
 

@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"crypto/x509"
@@ -8,13 +8,13 @@ import (
 	"testing"
 )
 
-//Check correct status is returned when doing a bad request
+// Check correct status is returned when doing a bad request
 func TestGenerateCertificate(t *testing.T) {
 	var cleanUp func()
-	exePath, cleanUp = getStorageLocation(t)
+	exePath, cleanUp := getStorageLocation(t)
 	defer cleanUp()
 	name := "127.0.0.1"
-	generateCert(name, certFilename, keyFilename)
+	generateCert(exePath, name, certFilename, keyFilename)
 	certPem, err := os.ReadFile(path.Join(exePath, certFilename))
 	if err != nil {
 		t.Fatal(err)

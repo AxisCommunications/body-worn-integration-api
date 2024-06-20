@@ -1,8 +1,7 @@
-//Creates a test folder in the same location as the test code which later is deleted.
-//Make sure no test folder exists in the storage location since it will
-//get automatically deleted.
-
-package main
+// Creates a test folder in the same location as the test code which later is deleted.
+// Make sure no test folder exists in the storage location since it will
+// get automatically deleted.
+package server
 
 import (
 	"bytes"
@@ -16,16 +15,14 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/kardianos/service"
 )
 
 var (
 	tokenSecret = []byte("secret")
 )
 
-//Check correct status is returned when doing a bad request
+// Check correct status is returned when doing a bad request
 func TestBadRequest(t *testing.T) {
-	initLogger(t)
 	// PATCH is unsupported and should trigger bad request.
 	req, err := http.NewRequest("PATCH", "/v1.0/abc/test/test.txt", nil)
 	if err != nil {
@@ -40,20 +37,22 @@ func TestBadRequest(t *testing.T) {
 	rr := httptest.NewRecorder()
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	s.storageHandler(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
 	}
 }
 
-//Check GETing resources is forbidden
+// Check GETing resources is forbidden
 func TestGETAccessDenied(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
-
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	token, err := createToken(tokenSecret)
 	if err != nil {
 		t.Errorf("failed generating token while setting up test %v", err)
@@ -86,9 +85,8 @@ func TestGETAccessDenied(t *testing.T) {
 	}
 }
 
-//Check that it's not possible to do any put request without a token
+// Check that it's not possible to do any put request without a token
 func TestCallWithoutToken(t *testing.T) {
-	initLogger(t)
 	req, err := http.NewRequest("PUT", "/v1.0/abc/test", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -97,16 +95,17 @@ func TestCallWithoutToken(t *testing.T) {
 	rr := httptest.NewRecorder()
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	s.storageHandler(rr, req)
 	if rr.Code != http.StatusUnauthorized {
 		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
 	}
 }
 
-//Check that it's not possible to authenticate without credentials
+// Check that it's not possible to authenticate without credentials
 func TestAuthenticationWithoutCredentials(t *testing.T) {
-	initLogger(t)
 	req, err := http.NewRequest("GET", "/auth/v1.0", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -114,7 +113,9 @@ func TestAuthenticationWithoutCredentials(t *testing.T) {
 	rr := httptest.NewRecorder()
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
-	s := NewServer(&Settings{StorageLocation: storageLocation})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation},
+	}
 	s.authentication(rr, req)
 
 	if rr.Code != http.StatusUnauthorized {
@@ -122,9 +123,8 @@ func TestAuthenticationWithoutCredentials(t *testing.T) {
 	}
 }
 
-//Check that it's not possible to authenticate with wrong username or wrong password
+// Check that it's not possible to authenticate with wrong username or wrong password
 func TestAuthenticationWithWrongCredentials(t *testing.T) {
-	initLogger(t)
 	req, err := http.NewRequest("GET", "/auth/v1.0", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -132,7 +132,9 @@ func TestAuthenticationWithWrongCredentials(t *testing.T) {
 	req.Header.Add("X-Auth-User", "test:tester")
 	req.Header.Add("X-Auth-Key", "test")
 	rr := httptest.NewRecorder()
-	s := NewServer(&Settings{})
+	s := &Server{
+		settings: &Settings{},
+	}
 	s.authentication(rr, req)
 
 	if rr.Code != http.StatusUnauthorized {
@@ -154,9 +156,8 @@ func TestAuthenticationWithWrongCredentials(t *testing.T) {
 
 }
 
-//Check that it's possible to authenticate with correct credentials
+// Check that it's possible to authenticate with correct credentials
 func TestAuthenticationWithCorrectCredentials(t *testing.T) {
-	initLogger(t)
 	req, err := http.NewRequest("GET", "/auth/v1.0", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -164,13 +165,16 @@ func TestAuthenticationWithCorrectCredentials(t *testing.T) {
 	req.Header.Add("X-Auth-User", "test:tester")
 	req.Header.Add("X-Auth-Key", "testing")
 	rr := httptest.NewRecorder()
-	s := NewServer(&Settings{
-		Username: "test:tester",
-		// To change the test password: Add fmt.Prinln(string(hash)) to
-		// main.go > selectPassword() and go through the install wizard.
-		// Replace hash below with output.
-		Password: []byte("$2a$10$opFgX6pZq0t0kRMoOZ4/J.Er7ekZ0pCxcfTinWnrUVThb64g.8Mle"),
-	})
+	s := &Server{
+		settings: &Settings{
+			Username: "test:tester",
+			// To change the test password: Add fmt.Prinln(string(hash)) to
+			// main.go > selectPassword() and go through the install wizard.
+			// Replace hash below with output.
+			Password: []byte("$2a$10$opFgX6pZq0t0kRMoOZ4/J.Er7ekZ0pCxcfTinWnrUVThb64g.8Mle"),
+		},
+	}
+
 	s.authentication(rr, req)
 
 	if rr.Code != http.StatusOK {
@@ -178,10 +182,9 @@ func TestAuthenticationWithCorrectCredentials(t *testing.T) {
 	}
 }
 
-//Check that the authentication endpoint returns bad request when
-//recieving a bad request
+// Check that the authentication endpoint returns bad request when
+// recieving a bad request
 func TestBadRequestToAuthenticationEndpoint(t *testing.T) {
-	initLogger(t)
 	req, err := http.NewRequest("POST", "/auth/v1.0", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -189,7 +192,10 @@ func TestBadRequestToAuthenticationEndpoint(t *testing.T) {
 	req.Header.Add("X-Auth-User", "test:tester")
 	req.Header.Add("X-Auth-Key", "testing")
 	rr := httptest.NewRecorder()
-	s := NewServer(&Settings{})
+
+	s := &Server{
+		settings: &Settings{},
+	}
 	s.authentication(rr, req)
 
 	if rr.Code != http.StatusBadRequest {
@@ -197,13 +203,14 @@ func TestBadRequestToAuthenticationEndpoint(t *testing.T) {
 	}
 }
 
-//Check that a container is made, that correct response is sent back and that the meta is correctly updated
+// Check that a container is made, that correct response is sent back and that the meta is correctly updated
 func TestCreateContainer(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
 	metadata := map[string]string{"Test-Container": "test"}
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	status := createContainer(t, metadata, s)
 	if status != http.StatusCreated {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusCreated)
@@ -211,13 +218,13 @@ func TestCreateContainer(t *testing.T) {
 	matchMeta(t, storageLocation+"/test/test.metadata.json", metadata)
 }
 
-//Check that the response code is correct after making a duplicate container, check that the metadata is
-//updated and not overwritten
+// Check that the response code is correct after making a duplicate container, check that the metadata is
+// updated and not overwritten
 func TestCreateDuplicateContainer(t *testing.T) {
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
 	metadata := map[string]string{"Test-Container": "test"}
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret}}
 
 	resp1 := createContainer(t, metadata, s)
 	if resp1 != http.StatusCreated {
@@ -235,14 +242,15 @@ func TestCreateDuplicateContainer(t *testing.T) {
 	matchMeta(t, storageLocation+"/test/test.metadata.json", metadata)
 }
 
-//Check that the response code is correct after making a duplicate container, check that metadata can be deleted
-//by sending empty values
+// Check that the response code is correct after making a duplicate container, check that metadata can be deleted
+// by sending empty values
 func TestDeleteContainerMetadataField(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
 	metadata := map[string]string{"Test-Container": "test", "Test-Delete-Me": "deleteme"}
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 
 	resp1 := createContainer(t, metadata, s)
 	if resp1 != http.StatusCreated {
@@ -260,9 +268,8 @@ func TestDeleteContainerMetadataField(t *testing.T) {
 	matchMeta(t, storageLocation+"/test/test.metadata.json", metadata)
 }
 
-//Check post to corrupted meta
+// Check post to corrupted meta
 func TestPutToCorruptContainer(t *testing.T) {
-	initLogger(t)
 	//create a corrupted json file
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
@@ -276,7 +283,9 @@ func TestPutToCorruptContainer(t *testing.T) {
 		t.Fatal(err)
 	}
 	metadata := map[string]string{"Test-Container2": "meta3", "Test-Container3": "meta4"}
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	resp1 := createContainer(t, metadata, s)
 	if resp1 != http.StatusAccepted {
 		t.Errorf("Error expected %v but got %v when posting to a container", http.StatusAccepted, resp1)
@@ -299,14 +308,15 @@ func TestPutToCorruptContainer(t *testing.T) {
 	}
 }
 
-//Test that post to objects returns correct response codes
-//Test that meta data gets correctly overwritten
+// Test that post to objects returns correct response codes
+// Test that meta data gets correctly overwritten
 func TestPostToObject(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
 	metadata := map[string]string{"Test-Container": "test"}
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	resp1 := createContainer(t, metadata, s)
 	if resp1 != http.StatusCreated {
 		t.Errorf("Error expected %v but got %v when creating a container", http.StatusCreated, resp1)
@@ -330,13 +340,14 @@ func TestPostToObject(t *testing.T) {
 	matchMeta(t, storageLocation+"/test/test.test.txt.metadata.json", metadata)
 }
 
-//Check that the response code is correct
+// Check that the response code is correct
 func TestPostToEmptyContainer(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
 	metadata := map[string]string{"test": "meta1"}
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	resp1 := postToContainer(metadata, t, s)
 	//check response code
 	if resp1 != http.StatusNotFound {
@@ -344,14 +355,15 @@ func TestPostToEmptyContainer(t *testing.T) {
 	}
 }
 
-//Check that the response codes are correct
-//Check that the meta data is updated
+// Check that the response codes are correct
+// Check that the meta data is updated
 func TestPostToContainer(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
 	metadata := map[string]string{"Test-Container": "test", "Test-Container2": "test2"}
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	resp1 := createContainer(t, metadata, s)
 	if resp1 != http.StatusCreated {
 		t.Errorf("Error expected %v but got %v when creating a container", http.StatusCreated, resp1)
@@ -367,9 +379,8 @@ func TestPostToContainer(t *testing.T) {
 	matchMeta(t, storageLocation+"/test/test.metadata.json", metadata)
 }
 
-//Check post to corrupted meta
+// Check post to corrupted meta
 func TestPostToCorruptContainer(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
 	//create a corrupted json file
@@ -383,7 +394,9 @@ func TestPostToCorruptContainer(t *testing.T) {
 		t.Fatal(err)
 	}
 	metadata := map[string]string{"Test-Container2": "meta3", "Test-Container3": "meta4"}
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	resp1 := postToContainer(metadata, t, s)
 	if resp1 != http.StatusNoContent {
 		t.Errorf("Error expected %v but got %v when posting to a container", http.StatusNoContent, resp1)
@@ -406,25 +419,27 @@ func TestPostToCorruptContainer(t *testing.T) {
 	}
 }
 
-//Check that the correct response is sent when trying to put an object to a non existing container
+// Check that the correct response is sent when trying to put an object to a non existing container
 func TestPutObjectToNonExistingContainer(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	resp1 := createObject(t, s)
 	if resp1 != http.StatusNotFound {
 		t.Errorf("Error expected %v but got %v when using put to an empty container", http.StatusNotFound, resp1)
 	}
 }
 
-//Check that correct response is sent when trying to post to an object that doesn't exists
+// Check that correct response is sent when trying to post to an object that doesn't exists
 func TestPostToEmptyObject(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
 	metadata := map[string]string{"Test-Container": "test"}
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	resp1 := createContainer(t, metadata, s)
 	if resp1 != http.StatusCreated {
 		t.Errorf("Error expected %v but got %v when creating a container", http.StatusCreated, resp1)
@@ -437,15 +452,16 @@ func TestPostToEmptyObject(t *testing.T) {
 	}
 }
 
-//Check correct resp code when creating an object
-//Check that the object stored all data
-//Check that the meta data of the object is correct
+// Check correct resp code when creating an object
+// Check that the object stored all data
+// Check that the meta data of the object is correct
 func TestCreateObject(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
 	metadata := map[string]string{"Test-Container": "test"}
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	resp1 := createContainer(t, metadata, s)
 	if resp1 != http.StatusCreated {
 		t.Errorf("Error expected %v but got %v when creating a container", http.StatusCreated, resp1)
@@ -459,7 +475,7 @@ func TestCreateObject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	requestBody, err := json.Marshal(map[string]string{
+	requestBody, _ := json.Marshal(map[string]string{
 		"name": "Mr tester",
 		"data": "axafkdsfksfs",
 	})
@@ -470,12 +486,13 @@ func TestCreateObject(t *testing.T) {
 	matchMeta(t, storageLocation+"/test/test.test.txt.metadata.json", meta)
 }
 
-//Check that a a container with the name userid_deviceid_date_time is created
+// Check that a a container with the name userid_deviceid_date_time is created
 func TestContainerName(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	userid := createUser(t, s)
 	createDevice(t, s)
 	recordingName := userid + "_AABBCCDD1234_20190101_090909"
@@ -486,12 +503,13 @@ func TestContainerName(t *testing.T) {
 	}
 }
 
-//Check that a file called "complete" is created when status Complete is recieved
+// Check that a file called "complete" is created when status Complete is recieved
 func TestCompleteFile(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	userid := createUser(t, s)
 	createDevice(t, s)
 	recordingName := userid + "_AABBCCDD1234_20190101_090909"
@@ -522,13 +540,14 @@ func TestCompleteFile(t *testing.T) {
 	}
 }
 
-//Check that it's possible to get metadata from an object and container
+// Check that it's possible to get metadata from an object and container
 func TestGetMetadata(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
 	metadata := map[string]string{"Test-Container": "test"}
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 	resp1 := createContainer(t, metadata, s)
 	if resp1 != http.StatusCreated {
 		t.Errorf("Error expected %v but got %v when creating a container", http.StatusCreated, resp1)
@@ -575,13 +594,14 @@ func TestGetMetadata(t *testing.T) {
 	}
 }
 
-//Check that we return the correct errors when trying to get metadata from a
-//non-existing object or container
+// Check that we return the correct errors when trying to get metadata from a
+// non-existing object or container
 func TestGetNonexistingMetadata(t *testing.T) {
-	initLogger(t)
 	storageLocation, cleanUp := getStorageLocation(t)
 	defer cleanUp()
-	s := NewServer(&Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret})
+	s := &Server{
+		settings: &Settings{StorageLocation: storageLocation, TokenSecret: tokenSecret},
+	}
 
 	req, err := http.NewRequest("HEAD", "/v1.0/abc/test/test.txt", nil)
 	if err != nil {
@@ -609,20 +629,6 @@ func TestGetNonexistingMetadata(t *testing.T) {
 	s.storageHandler(rr, req)
 	if rr.Code != http.StatusNotFound {
 		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusNotFound)
-	}
-}
-
-func initLogger(t *testing.T) {
-	svcConfig := &service.Config{Name: "M"}
-	server := &mss{}
-	s, err := service.New(server, svcConfig)
-	if err != nil {
-		t.Error(err)
-	}
-
-	logger, err = s.Logger(nil)
-	if err != nil {
-		t.Error(err)
 	}
 }
 
@@ -685,7 +691,7 @@ func postToObject(object string, meta map[string]string, t *testing.T, s *Server
 	return rr.Code
 }
 
-//Creates a User container and a user with a userid
+// Creates a User container and a user with a userid
 func createUser(t *testing.T, s *Server) string {
 	req, err := http.NewRequest("PUT", "/v1.0/abc/Users", nil)
 	if err != nil {
@@ -720,7 +726,7 @@ func createUser(t *testing.T, s *Server) string {
 
 }
 
-//Creates a Device container and a device with a deviceid
+// Creates a Device container and a device with a deviceid
 func createDevice(t *testing.T, s *Server) {
 	req, err := http.NewRequest("PUT", "/v1.0/abc/Devices", nil)
 	if err != nil {
@@ -753,7 +759,7 @@ func createDevice(t *testing.T, s *Server) {
 	}
 }
 
-//Creates a recording with no data but with some metadata.
+// Creates a recording with no data but with some metadata.
 func createRecording(t *testing.T, recordingName string, s *Server) {
 	req, err := http.NewRequest("PUT", "/v1.0/abc/"+recordingName, nil)
 	if err != nil {

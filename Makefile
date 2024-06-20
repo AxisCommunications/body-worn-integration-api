@@ -24,32 +24,39 @@ ZIP_CONTENT=$(BINARY_WINDOWS) \
 			$(GPS_BINARY_LINUX_AMD64) \
 			$(GPS_BINARY_LINUX_ARM64) \
 			$(GPS_BINARY_DARWIN_AMD64) \
-			go.mod \
-			go.sum \
-			README.md \
-			LICENSE \
-			VERSION \
-			Makefile \
-			play_encrypted \
-			main.go \
-			main_test.go \
-			server.go \
-			server_test.go \
-			capability.go \
-			middleware.go \
 			cmd/gnss_viewer/main.go \
 			cmd/gnss_viewer/gps_converter.go \
-			cmd/gnss_viewer/index.html
+			cmd/gnss_viewer/index.html \
+			cmd/media-storage-service/main.go \
+			server/capability.go \
+			server/certificate_test.go \
+			server/configure.go \
+			server/logger.go \
+			server/middleware.go \
+			server/server_test.go \
+			server/server.go \
+			CODEOWNERS \
+			CONTRIBUTING.md \
+			decrypt_file.sh \
+			EXAMPLE.md \
+			go.mod \
+			go.sum \
+			LICENSE \
+			Makefile \
+			NEWS \
+			play_encrypted \
+			README.md \
+			VERSION
 
 build:
-	GOOS=linux GOARCH=amd64 go build -o $(BINARY_LINUX_AMD64) -v $(GOFLAGS) .
-	GOOS=linux GOARCH=arm64 go build -o $(BINARY_LINUX_ARM64) -v $(GOFLAGS) .
-	GOOS=darwin GOARCH=amd64 go build -o $(BINARY_DARWIN_AMD64) -v $(GOFLAGS) .
-	GOOS=windows GOARCH=amd64 go build -o $(BINARY_WINDOWS) -v $(GOFLAGS) .
-	GOOS=linux GOARCH=amd64 go build -o $(GPS_BINARY_LINUX_AMD64) -v $(GOFLAGS) cmd/gnss_viewer/*.go
-	GOOS=linux GOARCH=arm64 go build -o $(GPS_BINARY_LINUX_ARM64) -v $(GOFLAGS) cmd/gnss_viewer/*.go
-	GOOS=darwin GOARCH=amd64 go build -o $(GPS_BINARY_DARWIN_AMD64) -v $(GOFLAGS) cmd/gnss_viewer/*.go
-	GOOS=windows GOARCH=amd64 go build -o $(GPS_BINARY_WINDOWS) -v $(GOFLAGS) cmd/gnss_viewer/*.go
+	GOOS=linux GOARCH=amd64 go build -o $(BINARY_LINUX_AMD64) -v $(GOFLAGS) ./cmd/media-storage-service/
+	GOOS=linux GOARCH=arm64 go build -o $(BINARY_LINUX_ARM64) -v $(GOFLAGS) ./cmd/media-storage-service/
+	GOOS=darwin GOARCH=amd64 go build -o $(BINARY_DARWIN_AMD64) -v $(GOFLAGS) ./cmd/media-storage-service/
+	GOOS=windows GOARCH=amd64 go build -o $(BINARY_WINDOWS) -v $(GOFLAGS) ./cmd/media-storage-service/
+	GOOS=linux GOARCH=amd64 go build -o $(GPS_BINARY_LINUX_AMD64) -v $(GOFLAGS) ./cmd/gnss_viewer/
+	GOOS=linux GOARCH=arm64 go build -o $(GPS_BINARY_LINUX_ARM64) -v $(GOFLAGS) ./cmd/gnss_viewer/
+	GOOS=darwin GOARCH=amd64 go build -o $(GPS_BINARY_DARWIN_AMD64) -v $(GOFLAGS) ./cmd/gnss_viewer/
+	GOOS=windows GOARCH=amd64 go build -o $(GPS_BINARY_WINDOWS) -v $(GOFLAGS) ./cmd/gnss_viewer/
 
 clean:
 	go clean
