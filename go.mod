@@ -7,8 +7,8 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/kardianos/service v1.2.2
 	github.com/ncw/swift/v2 v2.0.2
-	golang.org/x/crypto v0.22.0
-	golang.org/x/term v0.19.0
+	golang.org/x/crypto v0.31.0
+	golang.org/x/term v0.27.0
 )
 
-require golang.org/x/sys v0.19.0 // indirect
+require golang.org/x/sys v0.28.0 // indirect
