@@ -2,6 +2,8 @@
 
 The Body worn integration API makes it possible to integrate a third-party application as a content destination (CD) to the Body worn system (BWS). The application that implements the API operates as the server, while the BWS is the client that calls the API. The API itself is HTTPS-based and communication with the application is protected by certificates, which need to be configured before the API can be used.
 
+This document describes the integration at a specific point in time, and new additions to the specification may not apply fully. For example, recordings made on earlier versions of the BWS firmware might not have all the data required by the latest specification. The metadata of such recordings would then be missing certain fields or they might be substituted by a default value. Another example could be that newly added capabilities will not be supported by earlier firmwares, and the BWS will therefore not apply the capability even if specified by the integration API.
+
 ## Terminology
 
 |Term | Description |
@@ -23,7 +25,7 @@ The only subgroup implemented outside of the Swift API is the **Connection API**
 
 ### Object addressing
 
-The Swift API implements 3 levels that can be used for addressing: `Account`, `Container` and `Object`. The `Account` corresponds to the login specified by a `BlobAPIKey` and `BlobAPIUserName` in the connection file (see below). The `Container` is the top level directory in a file path, the `Object` is the rest of the path and may include multiple slashes.
+The Swift API implements 3 levels that can be used for addressing: `Account`, `Container` and `Object`. The `Account` corresponds to the login specified by a `BlobAPIKey` and `BlobAPIUserName` in the connection file (see [Connection API](#connection-api-set-up-a-connection-to-the-content-destination)). The `Container` is the top level directory in a file path, the `Object` is the rest of the path and may include multiple slashes.
 
 ### Data structure
 
@@ -139,7 +141,7 @@ Some attributes can be modified after the initial setup is completed and some ar
 
 The Capability API makes it possible for a connected content destination to publish its supported features. It's the basis for extendability of the API, while still maintaining backward compatibility. The capability settings control visibility of new functionality in the system and the UI. Once a content destination declares that it has support for a capability, it's expected to always have support for it.
 
-The supported capabilities are published by the content destination in a JSON object named `Capability.json` , which shall be located in the `System/` container. To read the object, the BWS does a `GET` request for `System/Capability.json`.
+The supported capabilities are published by the content destination in a JSON object named `Capabilities.json` , which shall be located in the `System/` container. To read the object, the BWS does a `GET` request for `System/Capabilities.json`.
 
 ### File format
 
@@ -168,7 +170,7 @@ When responding to a request the Etag header, which contains the md5 hash of the
 
 ### Connection file
 
-The connection file includes the attribute `FullStoreAndReadSupport`. This is typically set for a standard Swift object store content destination, since new capabilities will always work towards a standard Swift implementation. In cases where you want to limit what is stored on a Swift server, don't set the `FullStoreAndReadSupport` attribute. Instead enable the wanted capabilities in the `System/Capability.json` object.
+The connection file includes the attribute `FullStoreAndReadSupport`. This is typically set for a standard Swift object store content destination, since new capabilities will always work towards a standard Swift implementation. In cases where you want to limit what is stored on a Swift server, don't set the `FullStoreAndReadSupport` attribute. Instead enable the wanted capabilities in the `System/Capabilities.json` object.
 
 ### Capability naming
 
@@ -181,8 +183,9 @@ The connection file includes the attribute `FullStoreAndReadSupport`. This is ty
 - `StoreBookmarks`
 - `StoreSignedVideo`
 - `StoreGNSSTrackRecording`
+- `StoreRejectedContent`
 
-For details on each capability, please see the Capability details chapter below
+For details on each capability, please see [Capability details](#capability-details).
 
 ## Access token API, file upload URI and credentials
 
@@ -265,6 +268,7 @@ The name of the container is `<UserID>_<BWCSerialNumber>_<TriggerOnTime>` where 
 
 | Key | Type | Description |
 |---|---|---|
+| ContainerName | String | The name of the container as defined above. |
 | BWCSerialNumber | String | The serial number of the device that captures the video in the container. |
 | SCUSerialNumber | String | The serial number of the device that received the recording from the BWC. |
 | FirmwareVersion | String | The firmware version of the BWC for when the video was recorded. |
@@ -277,6 +281,11 @@ The name of the container is `<UserID>_<BWCSerialNumber>_<TriggerOnTime>` where 
 | TriggerOffTime | String | The time when the recording was stopped, epoch UTC. |
 | TriggerOffTimeISO | String | The time when the recording was stopped, RFC3339 format (UTC). |
 | TriggerOffLocation | String[64] | `<lat><long><accuracy><epoch>` |
+| StartTime | String | The time when recording started (includes prebuffer if configured), epoch UTC. |
+| StartTimeISO | String | The time when recording started (includes prebuffer if configured), RFC3339 format (UTC). |
+| StopTime | String | The time when recording stopped (includes postbuffer if configured), epoch UTC. |
+| StopTimeISO | String | The time when recording stopped (includes postbuffer if configured), RFC3339 format (UTC). |
+| TimeZone | String | The time zone configured on the BWC at the time of recording, IANA. |
 | BWCModel | String | The BWC model that was used when recording. |
 | Status | String | Transferring\|Complete: The status of the Container. When the container metadata becomes Complete, there won't be any more updates or uploads to either the container or metadata. |
 
@@ -291,10 +300,17 @@ The name of the object is `<StartTime>_<RecordingID>.<ContainerType>`.
 | StopTime | String | The time when the clip ended, epoch UTC. |
 | StopTimeISO | String | The time when the clip ended, RFC3339 format (UTC). |
 | ContainerType | String | The file type of the clip (mkv or mp4) |
+| StartLocation | String[64] | `<lat><long><accuracy><epoch>` |
+| StopLocation | String[64] | `<lat><long><accuracy><epoch>` |
 
 #### Key object metadata
 
 The name of the object is `<StartTime>_<RecordingID>.key`.
+
+| Key | Type | Description |
+|---|---|---|
+| StartTime | String | The start time of the encrypted clip or the start time of the recording for encrypted location data. | 
+| FileType | String | 'key' |
 
 #### Bookmark object metadata
 
@@ -415,6 +431,43 @@ Object name is `<BWCSerialNumber>`.
 | Name | String[100] | The nice name of the device. |
 | Model | String | Device model (e.g. W100) |
 
+### Rejected content storage
+
+Content that has been rejected by the content destination (due to e.g. corrupt data or missing meta data) will be uploaded to a rejected 
+content container if the `StoreRejectedContent` capability has been enabled. If the capability is enabled, the SCU expects the content 
+destination to never reject anything uploaded as rejected content. 
+
+The name of the container is `RejectedContent_<RejectedContentTime>_<UUID>` where RejectedContentTime is the time when the decision was 
+made to reject the content and is given in UTC time and formatted according to YYYYMMDDTHHMMSSZ. The time can be unknown for some cases 
+and will then be given as `UnknownTime`. The last part is a unique id generated at the time of upload.
+
+Upload of rejected content differs somewhat from the ordinary flow:
+
+- The container will get content from at most one recording, but it is not guaranteed that all files end up in the same container
+- If only parts of a recording is rejected, the remaining clips will be uploaded normally
+
+#### Rejected content container metadata
+
+The container will contain all fields that would have been present in the normal container (if available), except for the 'Status' field, and 
+a few additions:
+
+| Key | Type | Description |
+|---|---|---|
+| ContainerName | String | The name of the rejected content container. |
+| RejectedContentOriginalContainer | String | The name of the container that should have received the content. Can be used to associate a clip with the rest of the recording. |
+| RejectedContentTime | String | The time when the decision was made to reject. |
+| RejectedContentReason | String | The reason for rejecting the content if available. |
+
+#### Rejected object metadata
+
+Rejected objects can be video clips, location data and encryption key files. 
+
+Rejected objects will get all metadata as defined above if available and one addition: 
+
+| Key | Type | Description |
+|---|---|---|
+| RejectedContentOriginalContainer | String | The name of the container that should have received the content. Can be used to associate a clip with the rest of the recording. |
+
 ## Object encryption
 
 ### Encrypt
@@ -458,7 +511,17 @@ https://www.axis.com/developer-community/signed-video for more information.
 
 ### GNSS track
 
-If the content destination can retrieve and display GNSS track data from a recording, it can activate it using the `StoreGNSSTrackRecording` capability. The GNSS data comes as a separate JSON object included in the recording container, other formats may be added later. See the chapter on **Location object format** for details.
+If the content destination can retrieve and display GNSS track data from a recording, it can activate it using the `StoreGNSSTrackRecording` capability. The GNSS data comes as a separate JSON object included in the recording container, other formats may be added later. See [Location object format](#location-object-format) for details.
+
+### Store Rejected Content
+
+In case a clip or recording is not possible to upload to the content destination in the normal way, the content destination can implement the
+'StoreRejectedContent' capability. The SCU will then attempt to upload the content to a special "Rejected Content" container. The content destination can then handle the content separately and e.g. store it separately from the other content.  
+
+Content eligible for rejected storage includes recordings or clips rejected by the content destination due to e.g. corrupt data or missing metadata, or any other reason that makes the content destination reject it. Note that this will not apply to content that fails uploading
+due to connectivity issues, they will simply be reattempted at a later time.
+
+See [Rejected content storage](#rejected-content-storage) for details on container and object structure.
 
 ## License
 
