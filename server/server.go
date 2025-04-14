@@ -161,7 +161,7 @@ func (s *Server) storageHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 	target := getTarget(r)
-	if target != "System/Capabilities.json" {
+	if target != "System/Capabilities.json" && target != "System/Categories.json" {
 		logger.Error("Unauthorized attempt to access object: %s", target)
 		e := swift.Forbidden
 		http.Error(w, e.Text, e.StatusCode)

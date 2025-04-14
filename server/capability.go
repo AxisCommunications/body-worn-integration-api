@@ -7,25 +7,41 @@ import (
 )
 
 type Capability struct {
+	Read         `json:"Read"`
+	Store        `json:"Store"`
 	StoreAndRead `json:"StoreAndRead"`
 }
 
-type StoreAndRead struct {
+type Read struct {
+	ReadCategories bool
+}
+
+type Store struct {
 	StoreBookmarks          bool
-	StoreReadSystemID       bool
+	StoreRejectedContent    bool
 	StoreUserIDKey          bool
 	StoreSignedVideo        bool
 	StoreGNSSTrackRecording bool
 }
 
+type StoreAndRead struct {
+	StoreReadSystemID bool
+}
+
 func writeCapabilities(fpath, filename string) error {
 	data := Capability{
-		StoreAndRead{
+		Read{
+			ReadCategories: true,
+		},
+		Store{
 			StoreBookmarks:          true,
-			StoreReadSystemID:       true,
+			StoreRejectedContent:    true,
 			StoreUserIDKey:          true,
 			StoreSignedVideo:        true,
 			StoreGNSSTrackRecording: true,
+		},
+		StoreAndRead{
+			StoreReadSystemID: true,
 		},
 	}
 

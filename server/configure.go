@@ -102,6 +102,11 @@ func Configure(configPath, version string) error {
 		}
 	}
 
+	err = writeCategories(filepath.Join(storageLocation, "System"), "Categories.json")
+	if err != nil {
+		return fmt.Errorf("failed to write categories file: %v", err)
+	}
+
 	settings := Settings{
 		StorageLocation:         storageLocation,
 		IPs:                     ips,

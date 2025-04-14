@@ -166,7 +166,7 @@ The supported capabilities are published by the content destination in a JSON ob
 
 Please note that all capabilities are considered unsupported if the object is missing or wrongly formatted. This is also true if a capability is not present or set to false.
 
-When responding to a request the Etag header, which contains the md5 hash of the JSON object, must be set, as it's used as a checksum. A typical log error from the SCU if cases where the header is incorrect is `object corrupt`.
+When responding to a request the Etag header, which contains the md5 hash of the JSON object, must be set, as it's used as a checksum. A typical log error from the SCU in cases where the header is incorrect is `object corrupt`.
 
 ### Connection file
 
@@ -178,6 +178,7 @@ The connection file includes the attribute `FullStoreAndReadSupport`. This is ty
 
 ### Current capabilities
 
+- `ReadCategories`
 - `StoreReadSystemID`
 - `StoreUserIDKey`
 - `StoreBookmarks`
@@ -488,6 +489,40 @@ keyfile object. In the keyfile object there's an attribute ´EncryptedKey´, whi
 See the documentation for the example server for more details on how to perform the decryption.
 
 ## Capability details
+
+### Categories
+
+If the `ReadCategories` capability is set, the BWS will read categories from the CD. The active categories are published by the content destination in a JSON object named `Categories.json`, which shall be located in the `System/` container. To read the object, the BWS does a GET request for `System/Categories.json`.
+
+On the BWS, a recording can be marked as belonging to a category. When the recording is uploaded to the CD, the category will be included as a bookmark. This ensures that the recording is correctly tagged from the beginning when it is uploaded to the CD. One way to mark a recording with a category is by using the mobile application Body Worn Assistant (BWA).
+
+Since categories are saved as bookmarks, the `StoreBookmarks` capability must be enabled in order to use categories. Category bookmarks contain the keys CategoryID, CategoryName and StartTime. They are described further in the [bookmark section](#bookmark-object-metadata). 
+
+#### Categories.json example
+```json
+[
+  {"Name":"<CATEGORY1>","Id":"<ID1>"},
+  {"Name":"<CATEGORY2>","Id":"<ID2>"},
+  {"Name":"<CATEGORY3>","Id":"<ID3>"},
+  {"Name":"<CATEGORY4>","Id":"<ID4>"},
+  {"Name":"<CATEGORY5>","Id":"<ID5>"},
+]
+```
+#### Default categories
+
+Before the `ReadCategories` capability was implemented, a list of default categories were used on the BWS. That list will still be used if the capability isn't fulfilled or if FullStoreAndReadSupport is enabled and the object `Categories.json` is missing.
+
+#### Etag header
+
+When responding to the GET request the Etag header, which contains the md5 hash of the JSON object, must be set, as it's used as a checksum. A typical log error from the SCU in cases where the header is incorrect is `object corrupt`.
+
+#### Syncing from CD to BWS
+
+The BWS reads categories from the CD once per day. This means that after adding the `ReadCategories` capability and `Categories.json` file, it can take up to 24 hours until the categories are synced. Alternatively, a sync can be triggered instantly by reuploading the CD config file in the BWM.
+
+#### Handling old categories
+
+Please be aware that categories will not be updated on BWCs if they are undocked. This means it's possible for recordings to be uploaded with categories that have been removed from the CD, if the BWC hasn't been docked since the categories were changed. Therefore, make sure that the content destination gracefully handles "unknown" categories.
 
 ### SystemID
 

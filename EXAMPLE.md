@@ -153,6 +153,8 @@ If supported (decided via the corresponding capability), every BWS that
 connects to the server creates an empty object with the name `<bwsid>` and a
 corresponding bwsid metadata file, named `System.<bwsid>.metadata.json`.
 
+The example server creates a `Categories.json` file.
+
 If not running with the `FullStoreAndReadSupport` flag the example server
 creates a `Capabilities.json` file.
 
