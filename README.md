@@ -102,7 +102,7 @@ The connection file is a JSON file with attribute names, value types and lengths
   "ConnectionFileVersion": "1.0",
   "SiteName": "<string:64>",
   "ApplicationName": "<string:256>",
-  "ApplicationVersion": "<version-string:64>",
+  "ApplicationVersion": "<version-string:128>",
   "ContentDestinationAsNTPServer": <bool>,
   "AuthenticationTokenURI": [ "<URI:512>", "<URI:512>", ... x 10 ],
   "HTTPSCertificate": [ "<Base64 encoded X509 Certificate:16k>", "<Base64 encoded X509 Certificate:16k>", ... x 10 ],
